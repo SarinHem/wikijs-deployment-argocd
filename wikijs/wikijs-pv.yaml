@@ -3,10 +3,10 @@ kind: PersistentVolume
 metadata:
   name: wikijs-pv
 spec:
-  storageClassName: standard
   capacity:
     storage: 1Gi
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
+  storageClassName: standard
   hostPath:
-    path: /mr/zk      
+    path: "/mnt/data"  
