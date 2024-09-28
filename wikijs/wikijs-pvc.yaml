@@ -3,10 +3,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: wikijs-pvc
 spec:
-  storageClassName: standard
+  storageClassName: fast-storage  # Use the new storage class here
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-
