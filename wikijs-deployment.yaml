@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wikijs
+  labels:
+    app: wikijs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wikijs
+  template:
+    metadata:
+      labels:
+        app: wikijs
+    spec:
+      containers:
+      - name: wikijs
+        image: requarks/wiki:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_TYPE
+          value: "sqlite"
+        - name: DB_FILEPATH
+          value: "/data/wikijs.db"
+        volumeMounts:
+        - name: wikijs-data
+          mountPath: /data
+      volumes:
+      - name: wikijs-data
+        persistentVolumeClaim:
+          claimName: wikijs-pvc
