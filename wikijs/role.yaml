@@ -1,7 +1,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
-metadata:
-  namespace: demo-app
+metadata:  
   name: pvc-access
 rules:
 - apiGroups: [""]

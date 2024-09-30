@@ -1,8 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: pvc-access-binding
-  namespace: demo-app
+  name: pvc-access-binding  
 subjects:
 - kind: User
   name: system:node:ubuntu-s-1vcpu-1gb-nyc1-01
