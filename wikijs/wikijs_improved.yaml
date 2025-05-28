@@ -1,0 +1,273 @@
+# Namespace for better organization
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wikijs
+  labels:
+    name: wikijs
+
+---
+# ConfigMap for environment variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wikijs-config
+  namespace: wikijs
+data:
+  DB_TYPE: "sqlite"
+  DB_FILEPATH: "/data/wikijs.db"
+  # Add other non-sensitive config here
+
+---
+# Secret for sensitive data (if needed for future database configs)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wikijs-secrets
+  namespace: wikijs
+type: Opaque
+data:
+  # Add base64 encoded secrets here if needed
+  # Example: db-password: <base64-encoded-password>
+
+---
+# Improved PersistentVolume with better configuration
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: wikijs-pv
+  labels:
+    app: wikijs
+spec:
+  capacity:
+    storage: 5Gi  # Increased storage
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain  # Prevent data loss
+  storageClassName: local-storage
+  hostPath:
+    path: /mnt/wikijs-data
+    type: DirectoryOrCreate
+
+---
+# Improved PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wikijs-pvc
+  namespace: wikijs
+  labels:
+    app: wikijs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# Improved Deployment with security and reliability enhancements
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wikijs
+  namespace: wikijs
+  labels:
+    app: wikijs
+    version: v1
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: wikijs
+  template:
+    metadata:
+      labels:
+        app: wikijs
+        version: v1
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: wikijs
+        image: requarks/wiki:2.5  # Use specific version instead of latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: DB_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: wikijs-config
+              key: DB_TYPE
+        - name: DB_FILEPATH
+          valueFrom:
+            configMapKeyRef:
+              name: wikijs-config
+              key: DB_FILEPATH
+        volumeMounts:
+        - name: wikijs-data
+          mountPath: /data
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        # Resource limits and requests
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: wikijs-data
+        persistentVolumeClaim:
+          claimName: wikijs-pvc
+      # Add node selector if needed for specific nodes
+      # nodeSelector:
+      #   kubernetes.io/hostname: specific-node
+
+---
+# Improved Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: wikijs-service
+  namespace: wikijs
+  labels:
+    app: wikijs
+spec:
+  selector:
+    app: wikijs
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP  # Changed from NodePort for better security
+
+---
+# Ingress for external access (optional)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wikijs-ingress
+  namespace: wikijs
+  labels:
+    app: wikijs
+  annotations:
+    # Add your ingress controller specific annotations
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  rules:
+  - host: wiki.yourdomain.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wikijs-service
+            port:
+              number: 80
+  # TLS configuration (optional)
+  # tls:
+  # - hosts:
+  #   - wiki.yourdomain.com
+  #   secretName: wikijs-tls
+
+---
+# ServiceAccount (if RBAC is needed)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wikijs-service-account
+  namespace: wikijs
+  labels:
+    app: wikijs
+
+---
+# Simplified Role (only if specific permissions are needed)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wikijs-role
+  namespace: wikijs
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]
+
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wikijs-role-binding
+  namespace: wikijs
+subjects:
+- kind: ServiceAccount
+  name: wikijs-service-account
+  namespace: wikijs
+roleRef:
+  kind: Role
+  name: wikijs-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# NetworkPolicy for additional security (optional)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: wikijs-network-policy
+  namespace: wikijs
+spec:
+  podSelector:
+    matchLabels:
+      app: wikijs
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx  # Adjust based on your ingress namespace
+    ports:
+    - protocol: TCP
+      port: 3000
+  egress:
+  - {}  # Allow all egress traffic
