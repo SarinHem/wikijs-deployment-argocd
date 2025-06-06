@@ -46,7 +46,7 @@ The deployment consists of the following Kubernetes resources:
 
 ```bash
 git clone <your-repo-url>
-cd wikijs-deployment-argocd
+cd wikijs-deployment-argocd/wikijs
 ```
 
 ### 2. Review Configuration
