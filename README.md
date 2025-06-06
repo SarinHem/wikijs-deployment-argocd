@@ -46,7 +46,7 @@ The deployment consists of the following Kubernetes resources:
 
 ```bash
 git clone <your-repo-url>
-cd wikijs-k8s-deployment
+cd wikijs-deployment-argocd
 ```
 
 ### 2. Review Configuration
@@ -61,7 +61,7 @@ Edit the following files to match your environment:
 
 ```bash
 # Apply all resources
-kubectl apply -f wikijs-deployment.yaml
+kubectl apply -f wikijs.yaml
 
 # Check deployment status
 kubectl get pods -n wikijs
