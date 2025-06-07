@@ -79,7 +79,21 @@ spec:
         app: wikijs
         version: v1
     spec:
-      # Removed securityContext to reduce overhead
+      # Add securityContext for proper file permissions
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      # Init container to fix permissions
+      initContainers:
+      - name: fix-permissions
+        image: busybox:1.35
+        command: ['sh', '-c', 'mkdir -p /data && chown -R 1000:1000 /data && chmod -R 755 /data']
+        volumeMounts:
+        - name: wikijs-data
+          mountPath: /data
+        securityContext:
+          runAsUser: 0  # Run as root to fix permissions
       containers:
       - name: wikijs
         image: requarks/wiki:2.5
@@ -112,6 +126,10 @@ spec:
         volumeMounts:
         - name: wikijs-data
           mountPath: /data
+        # Container security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
         # Minimal resource allocation
         resources:
           requests:
